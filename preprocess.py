@@ -17,8 +17,8 @@ def main(filter_flag,min,max):
                 process.filter_products(min)
         else:
             process.filter_products()
-        process.filtered_df.to_csv('preprocessed_data/filtered_data.csv',index=False)
-    process.df.to_csv('preprocessed_data/data.csv',index=False)
+        process.filtered_df.sort_values('event_time').to_csv('preprocessed_data/filtered_data.csv',index=False)
+    process.df.sort_values('event_time').to_csv('preprocessed_data/data.csv',index=False)
 
 
 if __name__ == '__main__':
