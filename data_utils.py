@@ -98,3 +98,94 @@ class ProcessData():
 
         for key,value in msg.items():
             print(key,':',value)
+
+class classifierInputData():
+        datapath = 'preprocessed_data/'
+
+        def read_data(self):
+            self.df = pd.read_csv(self.datapath+'filtered_data.csv',header=0,parse_dates=['event_time'],infer_datetime_format=True)
+            self.df['event_type'] = self.df['event_type'].astype('category')
+
+        def get_demand(self, window_size=1):
+            demand_df = self.df.copy()
+            demand_df['year'] = demand_df.event_time.dt.year
+            demand_df['month'] = demand_df.event_time.dt.month
+            demand_df['day'] = demand_df.event_time.dt.day
+            demand_df = demand_df.groupby(['product_id','year','month','day']) \
+                .agg({'user_session':'nunique'}).reset_index()
+            demand_df['date'] = pd.to_datetime(demand_df[['year','month','day']])
+
+            for w in range(1,window_size+1):
+                demand_df['shift_'+str(w)] = demand_df.user_session.shift(periods=w)
+            demand_df = demand_df.dropna()
+
+            for w1 in range(1,window_size+1):
+                demand_df['prev_'+str(w1)] = 0
+                for w2 in range(1, w1+1):
+                    demand_df['prev_'+str(w1)] += demand_df['shift_'+str(w2)]
+                demand_df['prev_'+str(w1)] = demand_df['prev_'+str(w1)].astype('int')
+
+            demand_df = demand_df[['product_id','date']+['prev_'+str(w1) for w1 in range(1,window_size+1)]]
+            self.demand_df = demand_df
+            del demand_df
+
+        def get_input_data(self, window=1):
+            df_copy = self.df.copy()
+            # retain user-product combinations with cart event_type
+            df_copy = df_copy.merge(df_copy.loc[df_copy.event_type=='cart',['product_id','user_id']].drop_duplicates() \
+                        ,on=['product_id','user_id'],how='inner')
+
+            # identifying latest cart event time
+            last_cart_df = df_copy.loc[df_copy.event_type =='cart',['user_id','product_id','event_time']] \
+                    .groupby(['user_id','product_id']).event_time.last().reset_index() \
+                    .rename(columns={'event_time':'last_cart_time'})
+            df_copy = df_copy.merge(last_cart_df,on=['user_id','product_id'],how='inner')
+            del last_cart_df
+
+            # time division based feature and label dataframes
+            feature_df = df_copy.loc[df_copy.event_time <= df_copy.last_cart_time, ['user_id','product_id','price','event_type','user_session','event_time']]
+            label_df = df_copy.loc[df_copy.event_time > df_copy.last_cart_time, ['user_id','product_id','event_type']]
+
+            self.df = df_copy
+            del df_copy
+
+            # feature engineering
+            for event in list(feature_df.event_type.unique()):
+                feature_df[event] = (feature_df.event_type == event)
+
+            feature_df = feature_df.sort_values(['user_id','product_id','event_time'])
+
+            agg_func = dict()
+            agg_func['price'] = ['first','mean','last']
+            agg_func['event_type'] = 'count'
+            agg_func['user_session'] = 'nunique'
+            agg_func['event_time'] = ['first','last']
+            agg_func['cart'] = 'sum'
+            agg_func['view'] = 'sum'
+            agg_func['remove_from_cart'] = 'sum'
+            agg_func['purchase'] = 'sum'
+
+            feature_df = feature_df.groupby(['user_id','product_id']).agg(agg_func).reset_index()
+            feature_df.columns = ['_'.join(col) if col[1] != '' else ' '.join(col).strip() for col in feature_df.columns.values]
+
+            # get cumulative product demand for previous n days
+            feature_df['date'] = pd.to_datetime(feature_df.event_time_last.dt.date)
+            self.get_demand(window)
+            feature_df = feature_df.merge(self.demand_df,on=['product_id','date'],how='inner')
+
+            feature_df['price_change_percent'] = (100 * (feature_df['price_last'] - feature_df['price_first']) / feature_df['price_first'])
+            feature_df['tenure'] = feature_df['event_time_last'].dt.dayofyear - feature_df['event_time_first'].dt.dayofyear
+            feature_df['day_of_week'] = feature_df['date'].dt.dayofweek
+            feature_df = feature_df[['user_id','product_id','event_type_count','user_session_nunique','view_sum','cart_sum','remove_from_cart_sum','purchase_sum','price_mean','price_last','price_change_percent','tenure','day_of_week']+['prev_'+str(w) for w in range(1,window+1)]]
+
+            # creating labels
+            label_df = label_df[label_df.event_type != 'view']
+            label_df['event_type'] = label_df.event_type.apply(lambda x: 1 if x == 'purchase' else -1)
+            label_df = label_df.groupby(['user_id','product_id']).agg({'event_type':'max'}).reset_index()
+
+            # creating input dataframe
+            final_df = feature_df.merge(label_df,on=['user_id','product_id'],how='outer').fillna(0)
+            final_df.columns = ['user_id','product_id','interactions','sessions','view','cart','remove_from_cart','purchase','avg_price','latest_price','price_change','tenure','day_of_week']+['prev_'+str(w) for w in range(1,window+1)]+['event_type']
+
+            self.df = final_df
+            del final_df
