@@ -55,7 +55,7 @@ class ProcessData():
         df_copy = df_copy.loc[df_copy._merge == 'left_only', :]
         df_copy = df_copy.drop(['_merge'], axis='columns')
 
-        df_copy = df_copy.loc[df_copy.price >= 0, :] # non-negative price filter
+        df_copy = df_copy.loc[df_copy.price > 0, :] # positive price filter
         df_copy = df_copy.drop_duplicates() # drop duplicate records
         self.df = df_copy
         print('After pre-processing:')
@@ -81,7 +81,7 @@ class ProcessData():
         else:
             msg['event_time'] = 'fail'
 
-        if self.df[self.df.price<0].shape[0] == 0:
+        if self.df[self.df.price<=0].shape[0] == 0:
             msg['price'] = 'success'
         else:
             msg['price'] = 'fail'
