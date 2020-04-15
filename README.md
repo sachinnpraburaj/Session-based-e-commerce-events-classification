@@ -1,4 +1,5 @@
 # Session-based-e-commerce-analysis
+
 - This project explores eCommerce events data to identify potential Business Intelligence use-cases and to develop data-driven solutions using machine learning and deep learning techniques
 - The Kaggle eCommerce Events History in Cosmetics Shop was used for this project.
   Link to dataset: https://www.kaggle.com/mkechinov/ecommerce-events-history-in-cosmetics-shop
