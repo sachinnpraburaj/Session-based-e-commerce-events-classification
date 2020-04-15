@@ -61,7 +61,7 @@ class ProcessData():
         print('After pre-processing:')
         self.explore_data(self.df)
 
-    def filter_products(self,start=100,end=1100):
+    def filter_products(self,start,end):
         df_copy = self.df.copy()
 
         # products with significant user sessions
@@ -106,7 +106,7 @@ class classifierInputData():
             self.df = pd.read_csv(self.datapath+'filtered_data.csv',header=0,parse_dates=['event_time'],infer_datetime_format=True)
             self.df['event_type'] = self.df['event_type'].astype('category')
 
-        def get_demand(self, window_size=1):
+        def get_demand(self, window_size):
             demand_df = self.df.copy()
             demand_df['year'] = demand_df.event_time.dt.year
             demand_df['month'] = demand_df.event_time.dt.month
@@ -123,13 +123,13 @@ class classifierInputData():
                 demand_df['prev_'+str(w1)] = 0
                 for w2 in range(1, w1+1):
                     demand_df['prev_'+str(w1)] += demand_df['shift_'+str(w2)]
-                demand_df['prev_'+str(w1)] = demand_df['prev_'+str(w1)].astype('int')
+                demand_df['prev_'+str(w1)] = (demand_df['prev_'+str(w1)] / w1).astype('float')
 
             demand_df = demand_df[['product_id','date']+['prev_'+str(w1) for w1 in range(1,window_size+1)]]
             self.demand_df = demand_df
             del demand_df
 
-        def get_input_data(self, window=1):
+        def get_input_data(self, window):
             df_copy = self.df.copy()
             # retain user-product combinations with cart event_type
             df_copy = df_copy.merge(df_copy.loc[df_copy.event_type=='cart',['product_id','user_id']].drop_duplicates() \
@@ -168,7 +168,7 @@ class classifierInputData():
             feature_df = feature_df.groupby(['user_id','product_id']).agg(agg_func).reset_index()
             feature_df.columns = ['_'.join(col) if col[1] != '' else ' '.join(col).strip() for col in feature_df.columns.values]
 
-            # get cumulative product demand for previous n days
+            # get average product demand for previous n days
             feature_df['date'] = pd.to_datetime(feature_df.event_time_last.dt.date)
             self.get_demand(window)
             feature_df = feature_df.merge(self.demand_df,on=['product_id','date'],how='inner')
@@ -176,7 +176,8 @@ class classifierInputData():
             feature_df['price_change_percent'] = (100 * (feature_df['price_last'] - feature_df['price_first']) / feature_df['price_first'])
             feature_df['tenure'] = feature_df['event_time_last'].dt.dayofyear - feature_df['event_time_first'].dt.dayofyear
             feature_df['day_of_week'] = feature_df['date'].dt.dayofweek
-            feature_df = feature_df[['user_id','product_id','event_type_count','user_session_nunique','view_sum','cart_sum','remove_from_cart_sum','purchase_sum','price_mean','price_last','price_change_percent','tenure','day_of_week']+['prev_'+str(w) for w in range(1,window+1)]]
+            feature_df['lifetime_value'] = feature_df['price_mean']*feature_df['tenure']*feature_df['purchase_sum']
+            feature_df = feature_df[['user_id','product_id','event_type_count','user_session_nunique','view_sum','cart_sum','remove_from_cart_sum','purchase_sum','price_mean','price_last','price_change_percent','tenure','day_of_week','lifetime_value']+['prev_'+str(w) for w in range(1,window+1)]]
 
             # creating labels
             label_df = label_df[label_df.event_type != 'view']
@@ -185,7 +186,7 @@ class classifierInputData():
 
             # creating input dataframe
             final_df = feature_df.merge(label_df,on=['user_id','product_id'],how='outer').fillna(0)
-            final_df.columns = ['user_id','product_id','interactions','sessions','view','cart','remove_from_cart','purchase','avg_price','latest_price','price_change','tenure','day_of_week']+['prev_'+str(w) for w in range(1,window+1)]+['event_type']
+            final_df.columns = ['user_id','product_id','interactions','sessions','no_view','no_cart','no_remove_from_cart','no_purchase','avg_price','latest_price','price_change','tenure','day_of_week','lifetime_value']+['prev_'+str(w) for w in range(1,window+1)]+['event_type']
 
             self.df = final_df
             del final_df
