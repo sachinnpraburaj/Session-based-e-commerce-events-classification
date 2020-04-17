@@ -39,3 +39,5 @@ python3 generate_input.py [-w DEMAND_WINDOW]
 
 ### data pre-processing:
 - Optimized memory usage by efficiently reading the data
+- Handled observations from EDA
+- Enabled filtering of data based on number of unique user-sessions
