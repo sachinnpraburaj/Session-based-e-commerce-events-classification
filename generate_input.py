@@ -1,4 +1,4 @@
-from data_utils import *
+from data_utils import classifierInputData
 import argparse, sys
 
 def main(window):

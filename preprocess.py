@@ -1,4 +1,4 @@
-from data_utils import *
+from data_utils import ProcessData
 import argparse, sys
 
 def main(filter_flag,min,max):

@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
 import random
+import os
 
 class ProcessData():
-    datapath = 'cosmetics dataset/'
+    datapath = os.path.join(os.getcwd(),'cosmetics dataset')
 
     def mem_usage(self, df):
         usage_b = df.memory_usage(deep=True).sum()
@@ -18,9 +19,10 @@ class ProcessData():
         print("Null %: ",100*(df.isnull().any(axis=1).sum()/df.shape[0]))
 
     def read_data(self):
-        oct_df = pd.read_csv(self.datapath+'2019-Oct.csv')
-        nov_df = pd.read_csv(self.datapath+'2019-Nov.csv')
-        self.df = pd.concat([oct_df,nov_df])
+        oct_df = pd.read_csv(self.datapath+'/2019-Oct.csv')
+        nov_df = pd.read_csv(self.datapath+'/2019-Nov.csv')
+        dec_df = pd.read_csv(self.datapath+'/2019-Dec.csv')
+        self.df = pd.concat([oct_df,nov_df,dec_df])
         self.explore_data(self.df)
 
     def read_sample_data(self):
@@ -40,9 +42,11 @@ class ProcessData():
         column_types['user_id'] = 'uint32'
         column_types['user_session'] = 'object'
 
-        oct_df = pd.read_csv(self.datapath+'2019-Oct.csv',dtype=column_types,parse_dates=['event_time'],infer_datetime_format=True)
-        nov_df = pd.read_csv(self.datapath+'2019-Nov.csv',dtype=column_types,parse_dates=['event_time'],infer_datetime_format=True)
-        self.df = pd.concat([oct_df,nov_df])
+        oct_df = pd.read_csv(self.datapath+'/2019-Oct.csv',dtype=column_types,parse_dates=['event_time'],infer_datetime_format=True)
+        nov_df = pd.read_csv(self.datapath+'/2019-Nov.csv',dtype=column_types,parse_dates=['event_time'],infer_datetime_format=True)
+        dec_df = pd.read_csv(self.datapath+'/2019-Dec.csv',dtype=column_types,parse_dates=['event_time'],infer_datetime_format=True)
+
+        self.df = pd.concat([oct_df,nov_df,dec_df])
         self.explore_data(self.df)
 
     def pre_process(self):
@@ -100,10 +104,10 @@ class ProcessData():
             print(key,':',value)
 
 class classifierInputData():
-        datapath = 'preprocessed_data/'
+        datapath = os.path.join(os.getcwd(),'preprocessed_data')
 
         def read_data(self):
-            self.df = pd.read_csv(self.datapath+'filtered_data.csv',header=0,parse_dates=['event_time'],infer_datetime_format=True)
+            self.df = pd.read_csv(self.datapath+'/filtered_data.csv',header=0,parse_dates=['event_time'],infer_datetime_format=True)
             self.df['event_type'] = self.df['event_type'].astype('category')
 
 
@@ -141,6 +145,7 @@ class classifierInputData():
                     .groupby(['user_id','product_id']).event_time.last().reset_index() \
                     .rename(columns={'event_time':'last_cart_time'})
             df_copy = df_copy.merge(last_cart_df,on=['user_id','product_id'],how='inner')
+            df_copy = df_copy.sort_values('event_time')
             del last_cart_df
 
             # time division based feature and label dataframes
@@ -185,7 +190,7 @@ class classifierInputData():
             # creating labels
             label_df = label_df[label_df.event_type != 'view']
             label_df['event_type'] = label_df.event_type.apply(lambda x: 1 if x == 'purchase' else -1)
-            label_df = label_df.groupby(['user_id','product_id']).agg({'event_type':'max'}).reset_index()
+            label_df = label_df.groupby(['user_id','product_id']).agg({'event_type':'first'}).reset_index()
 
             # creating input dataframe
             final_df = feature_df.merge(label_df,on=['user_id','product_id'],how='outer').fillna(0)
