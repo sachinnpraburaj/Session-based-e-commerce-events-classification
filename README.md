@@ -31,7 +31,7 @@ python3 generate_input.py [-w DEMAND_WINDOW]
 
 # Project steps with Logic
 
-### initial EDA and key observations: [notebooks/e-commerce EDA.ipynb](e-commerce EDA.ipynb)
+### initial EDA and key observations: [e-commerce EDA.ipynb](notebooks/e-commerce%20EDA.ipynb)
 - Performed initial EDA (Exploratory Data Analysis) on the dataset to observe errors in the dataset.
 - Event time is an object -> must be converted to datetime
 - Negative and zero price value in distribution shows error in data -> can be removed
@@ -55,7 +55,7 @@ python3 generate_input.py [-w DEMAND_WINDOW]
 1 - Purchased | 0 - No Activity | -1 - Removed from cart
 ```
 
-### multi-class classification with hyperparameter optimization: [notebooks/multi class classification.ipynb](multi class classification.ipynb)
+### multi-class classification with hyperparameter optimization: [multi class classification.ipynb](notebooks/multi%20class%20classification.ipynb)
 - One hot encoded categorical variables
 - Predicted user's activity using random forest classifier with 71% accuracy
 - Optimized hyperparameters using random search and grid search cross validation techniques
