@@ -8,8 +8,8 @@
 - Optimized memory usage of source dataframe by ~60% by efficiently reading the data.
 - Performed initial EDA to identify errors in data and pre-processed accordingly
 - Engineered key business-relevant features like customer lifetime value and aggregate product demand during window
-- Used *Random Forest classifier* to predict user's activity - purchase, no change or remove from cart - after they add an item to the cart
-- Performed hyperparameter optimization to improve model performance using Random Search and Grid Search
+- Explored classification techniques to predict user's activity - purchase, no change or remove from cart - after they add an item to the cart
+- Explored hyperparameters and performed optimization to improve model performance using Random Search cross-validation technique
 
 # Instructions
 - Download the dataset and extract the files into 'cosmetics dataset' folder
@@ -56,14 +56,21 @@ python3 generate_input.py [-w DEMAND_WINDOW]
 ```
 
 ### multi-class classification with hyperparameter optimization: [multi class classification.ipynb](notebooks/multi%20class%20classification.ipynb)
+- Performed EDA to understand features distribution across classes
+- Power transformed features for normalization
 - One hot encoded categorical variables
-- Predicted user's activity using random forest classifier with 71% accuracy
-- Optimized hyperparameters using random search and grid search cross validation techniques
-- Improved model accuracy to 00% accuracy
-- Optimal hyperparameters:
+- Label encoded the labels
+- Predicted user's activity using different classificatio techniques:
+    - Logistic Regression - One vs Rest classifier with sga solver
+    - Logistic Regression - Multinomial Classifier with sga solver
+    - Random Forest Classifier - with and without hyperparameter optimization
+- Explored hyperparameters relevant to logistic regression and random forest classification:
 ```
-n_estimators: | min_depth: |
+Logistic regression - multi_class, solver
+Random Forest classification - n_estimators, max_features, max_depth, max_samples, min_samples_split, bootstrap
 ```
+- Optimized hyperparameters using random search cross validation technique
+
 
 # Future improvements
 - More relevant features can be engineered to enhance the quality of the input data
